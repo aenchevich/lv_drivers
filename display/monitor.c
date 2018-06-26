@@ -41,6 +41,11 @@ void mouse_handler(SDL_Event * event);
 void keyboard_handler(SDL_Event * event);
 #endif
 
+/***********************
+ *   GLOBAL VARIABLES
+ ***********************/
+bool g_sdl_quit_qry = false;
+
 /**********************
  *  STATIC VARIABLES
  **********************/
@@ -50,9 +55,6 @@ static SDL_Texture * texture;
 static uint32_t tft_fb[MONITOR_HOR_RES * MONITOR_VER_RES];
 static volatile bool sdl_inited = false;
 static volatile bool sdl_refr_qry = false;
-static volatile bool sdl_quit_qry = false;
-
-int quit_filter(void * userdata, SDL_Event * event);
 
 /**********************
  *      MACROS
@@ -187,6 +189,27 @@ void monitor_map(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_
     sdl_refr_qry = true;
 }
 
+/**
+   Deinitialize the SDL graphics simulation
+ */
+void monitor_deinit(void)
+{
+    if(sdl_inited)
+    {
+        sdl_inited = false;
+
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+
+        window = NULL;
+        renderer = NULL;
+        texture = NULL;
+
+        SDL_Quit();
+    }
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -198,11 +221,6 @@ void monitor_map(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_
 static int sdl_refr(void * param)
 {
     (void)param;
-
-    /*Initialize the SDL*/
-    SDL_Init(SDL_INIT_VIDEO);
-
-    SDL_SetEventFilter(quit_filter, NULL);
 
     window = SDL_CreateWindow("TFT Simulator",
                               SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -218,8 +236,8 @@ static int sdl_refr(void * param)
     sdl_refr_qry = true;
     sdl_inited = true;
 
-    /*Run until quit event not arrives*/
-    while(sdl_quit_qry == false) {
+    /*Run until quit event arrives and sets sdl_quit_qrry=true*/
+    while(g_sdl_quit_qry == false) {
 
         /*Refresh handling*/
         if(sdl_refr_qry != false) {
@@ -245,25 +263,11 @@ static int sdl_refr(void * param)
         SDL_Delay(SDL_REFR_PERIOD);
     }
 
-    SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    monitor_deinit();
 
     exit(0);
 
     return 0;
-}
-
-int quit_filter(void * userdata, SDL_Event * event)
-{
-    (void)userdata;
-
-    if(event->type == SDL_QUIT) {
-        sdl_quit_qry = true;
-    }
-
-    return 1;
 }
 
 #endif
